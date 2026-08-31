@@ -1,25 +1,56 @@
+import bcrypt
 from config import get_db_connection
 
 class UsuarioModel:
+
+    @staticmethod
+    def hash_password(password_plana):
+        salt = bcrypt.gensalt(rounds=12)
+        return bcrypt.hashpw(password_plana.encode('utf-8'), salt).decode('utf-8')
+
+    @staticmethod
+    def verify_password(password_plana, hashed_password):
+        return bcrypt.checkpw(password_plana.encode('utf-8'), hashed_password.encode('utf-8'))
 
     @staticmethod
     def get_all():
         conn = get_db_connection()
         try:
             with conn.cursor() as cursor:
-                cursor.execute("SELECT * FROM usuarios ORDER BY id DESC")
+                cursor.execute("SELECT id, nombre, correo, rol FROM usuarios ORDER BY id DESC")
                 return cursor.fetchall()
         finally:
             conn.close()
 
     @staticmethod
-    def create(nombre, correo, rol):
+    def get_by_id(id_usuario):
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT id, nombre, correo, rol FROM usuarios WHERE id = %s", (id_usuario,))
+                return cursor.fetchone()
+        finally:
+            conn.close()
+
+    @staticmethod
+    def get_by_email(correo):
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT * FROM usuarios WHERE correo = %s", (correo,))
+                return cursor.fetchone()
+        finally:
+            conn.close()
+
+    @staticmethod
+    def create(nombre, correo, password_plana, rol='usuario'):
+        hashed_password = UsuarioModel.hash_password(password_plana)
         conn = get_db_connection()
         try:
             with conn.cursor() as cursor:
                 cursor.execute(
-                    "INSERT INTO usuarios (nombre, correo, rol) VALUES (%s, %s, %s)",
-                    (nombre, correo, rol)
+                    "INSERT INTO usuarios (nombre, correo, password_hash, rol) VALUES (%s, %s, %s, %s)",
+                    (nombre, correo, hashed_password, rol)
                 )
             conn.commit()
         finally:
