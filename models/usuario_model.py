@@ -142,4 +142,4 @@ class UsuarioModel:
                 cursor.execute("SELECT * FROM auditoria_accesos ORDER BY fecha DESC")
                 return cursor.fetchall()
         finally:
-            conn.close()
+            conn.close() 
