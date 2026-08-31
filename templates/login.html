@@ -24,7 +24,7 @@
     {% endif %}
 {% endwith %}
 
-            <form method="POST" action="{{ url_for('login') }}">
+            <form method="POST" action="{{ url_for('login_view') }}">
                 <div style="margin-bottom: 15px;">
                     <label style="font-size: 13px; font-weight: 600; color: #475569;">Correo Electrónico</label>
                     <input type="email" name="correo" required autocomplete="username" placeholder="usuario@correo.com">
