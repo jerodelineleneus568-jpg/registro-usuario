@@ -10,10 +10,10 @@
 <div class="container">
     <header class="header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h1>Gestión de Usuarios</h1>
-        <div>
-            <span style="font-size: 14px; margin-right: 15px;">Conectado como: <strong>{{ usuario_actual }}</strong></span>
-            <a href="{{ url_for('logout_view') }}" class="btn btn-delete" style="text-decoration: none; padding: 6px 12px;">Cerrar Sesión</a>
-            <a href="{{ url_for('auditoria_view') }}" class="btn btn-edit" style="text-decoration: none; padding: 6px 12px; margin-right: 8px;">Ver Auditoría</a>
+        <div style="display: flex; align-items: center; gap: 10px;">
+            <span style="font-size: 14px;">Conectado como: <strong>{{ usuario_actual }}</strong></span>
+            <a href="{{ url_for('auditoria_view') }}" class="btn btn-edit" style="text-decoration: none; padding: 6px 14px;">Ver Auditoría</a>
+            <a href="{{ url_for('logout_view') }}" class="btn btn-delete" style="text-decoration: none; padding: 6px 14px;">Cerrar Sesión</a>
         </div>
     </header>
 

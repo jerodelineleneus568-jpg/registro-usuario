@@ -121,3 +121,14 @@ def eliminar_view(id_usuario):
         UsuarioModel.delete(id_usuario)
         flash("Usuario eliminado.", "success")
     return redirect(url_for('index_view'))
+
+
+@login_requerido
+def auditoria_view():
+    # Comprobar que el usuario tenga rol de administrador
+    if session.get('usuario_rol') != 'admin':
+        flash("Acceso denegado: solo administradores pueden ver la auditoría.", "error")
+        return redirect(url_for('index_view'))
+
+    logs = UsuarioModel.get_auditoria()
+    return render_template('auditoria.html', logs=logs, usuario_actual=session.get('usuario_nombre'))    
