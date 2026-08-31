@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Iniciar Sesión</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <div class="container" style="max-width: 400px; margin-top: 60px;">
+        <div class="card">
+            <div class="header">
+                <h1>Iniciar Sesión</h1>
+                <p class="subtitle">Panel Seguro</p>
+            </div>
+
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div style="padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 13px; 
+                             background-color: {% if category == 'error' %}#fee2e2; color: #991b1b;{% else %}#dcfce7; color: #166534;{% endif %}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+
+            <form method="POST" action="{{ url_for('login') }}">
+                <div style="margin-bottom: 15px;">
+                    <label style="font-size: 13px; font-weight: 600; color: #475569;">Correo Electrónico</label>
+                    <input type="email" name="correo" required autocomplete="username" placeholder="usuario@correo.com">
+                </div>
+
+                <div style="margin-bottom: 20px;">
+                    <label style="font-size: 13px; font-weight: 600; color: #475569;">Contraseña</label>
+                    <input type="password" name="password" required autocomplete="current-password" placeholder="••••••••">
+                </div>
+
+                <button type="submit" class="btn btn-add" style="width: 100%;">Entrar</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

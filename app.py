@@ -1,10 +1,25 @@
+import os
 from flask import Flask
-from controllers.usuario_controller import usuario_bp
+from controllers.usuario_controller import (
+    login_view, logout_view, index_view, agregar_view, eliminar_view
+)
 
 app = Flask(__name__)
+app.secret_key = os.getenv('SECRET_KEY', 'clave_secreta_para_sesiones_seguras')
 
-# Registrar Blueprint
-app.register_blueprint(usuario_bp)
+# Cookies protegidas (OWASP A05)
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE='Lax',
+    SESSION_COOKIE_SECURE=False
+)
+
+# Rutas
+app.add_url_rule('/login', view_func=login_view, methods=['GET', 'POST'])
+app.add_url_rule('/logout', view_func=logout_view, methods=['GET'])
+app.add_url_rule('/', view_func=index_view, methods=['GET'])
+app.add_url_rule('/agregar', view_func=agregar_view, methods=['POST'])
+app.add_url_rule('/eliminar/<int:id_usuario>', view_func=eliminar_view, methods=['POST'])
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=False)
