@@ -30,4 +30,4 @@ app.add_url_rule('/eliminar/<int:id_usuario>', view_func=eliminar_view, methods=
 app.add_url_rule('/auditoria', view_func=auditoria_view, methods=['GET'])
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=False)
+    app.run(host='0.0.0.0', port=5000, debug=True)
