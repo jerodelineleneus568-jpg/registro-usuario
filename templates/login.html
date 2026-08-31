@@ -14,16 +14,15 @@
                 <p class="subtitle">Panel Seguro</p>
             </div>
 
-            {% with messages = get_flashed_messages(with_categories=true) %}
-                {% if messages %}
-                    {% for category, message in messages %}
-                        <div style="padding: 10px; border-radius: 6px; margin-bottom: 15px; font-size: 13px; 
-                             background-color: {% if category == 'error' %}#fee2e2; color: #991b1b;{% else %}#dcfce7; color: #166534;{% endif %}">
-                            {{ message }}
-                        </div>
-                    {% endfor %}
-                {% endif %}
-            {% endwith %}
+          {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+            <div class="alert alert-{{ category }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
 
             <form method="POST" action="{{ url_for('login') }}">
                 <div style="margin-bottom: 15px;">
