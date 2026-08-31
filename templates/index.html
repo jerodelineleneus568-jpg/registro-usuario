@@ -16,7 +16,7 @@
         </div>
     </header>
 
-    <!-- Bloque de alertas Flash para mostrar mensajes de éxito o error -->
+    <!-- Bloque de alertas Flash -->
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
@@ -27,16 +27,12 @@
 
     <section class="card">
         <h2>Agregar Usuario</h2>
-        <!-- Se apunta a la función agregar_view y se incluye el campo password -->
         <form id="form-crear" action="{{ url_for('agregar_view') }}" method="POST" class="form-grid">
             <div class="form-group">
                 <input type="text" name="nombre" placeholder="Nombre completo" required>
             </div>
             <div class="form-group">
                 <input type="email" name="correo" placeholder="Correo electrónico" required>
-            </div>
-            <div class="form-group">
-                <input type="password" name="password" placeholder="Contraseña" required>
             </div>
             <div class="form-group">
                 <input type="text" name="rol" placeholder="Rol o cargo (ej. admin/usuario)" required>
