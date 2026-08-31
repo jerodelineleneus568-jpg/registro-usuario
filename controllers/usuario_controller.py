@@ -1,6 +1,7 @@
 from functools import wraps
 from flask import render_template, request, redirect, url_for, session, flash
 from models.usuario_model import UsuarioModel
+from datetime import datetime
 
 def login_requerido(f):
     @wraps(f)
@@ -14,6 +15,8 @@ def login_requerido(f):
 from datetime import datetime
 
 def login_view():
+    ip_origen = request.remote_addr or 'Desconocida'
+
     if request.method == 'POST':
         correo = request.form.get('correo', '').strip()
         password = request.form.get('password', '')
@@ -21,18 +24,20 @@ def login_view():
         usuario = UsuarioModel.get_by_email(correo)
 
         if not usuario:
+            UsuarioModel.registrar_auditoria(correo, ip_origen, 'FALLO_LOGIN', 'Usuario no encontrado')
             flash("Credenciales incorrectas.", "error")
             return render_template('login.html')
 
-        # 1. Comprobar si el usuario está actualmente bloqueado
+        # Comprobar bloqueo previo
         if usuario.get('bloqueado_hasta') and usuario['bloqueado_hasta'] > datetime.now():
+            UsuarioModel.registrar_auditoria(correo, ip_origen, 'ACCESO_DENEGADO', 'Intento de acceso a cuenta bloqueada')
             flash("Cuenta temporalmente bloqueada por demasiados intentos fallidos (5 min).", "error")
             return render_template('login.html')
 
-        # 2. Verificar contraseña
+        # Validar contraseña
         if UsuarioModel.verify_password(password, usuario['password_hash']):
-            # Restablecer intentos al ingresar con éxito
             UsuarioModel.reiniciar_intentos(usuario['id'])
+            UsuarioModel.registrar_auditoria(correo, ip_origen, 'LOGIN_EXITOSO', 'Inicio de sesión correcto')
             
             session.clear()
             session['usuario_id'] = usuario['id']
@@ -40,19 +45,27 @@ def login_view():
             session['usuario_rol'] = usuario['rol']
             return redirect(url_for('index_view'))
         else:
-            # Incrementar contador de fallos
             intentos_actuales = usuario.get('intentos_fallidos', 0)
             UsuarioModel.incrementar_intentos(usuario['id'], intentos_actuales)
             
             restantes = 5 - (intentos_actuales + 1)
             if restantes <= 0:
-                flash("Has superado el límite de 5 intentos. Tu cuenta ha sido bloqueada por 5 minutos.", "error")
+                UsuarioModel.registrar_auditoria(correo, ip_origen, 'CUENTA_BLOQUEADA', 'Bloqueo temporal activado (5 intentos)')
+                flash("Has superado el límite de 5 intentos. Cuenta bloqueada por 5 minutos.", "error")
             else:
+                UsuarioModel.registrar_auditoria(correo, ip_origen, 'FALLO_LOGIN', f'Contraseña errónea. Restantes: {restantes}')
                 flash(f"Contraseña incorrecta. Te quedan {restantes} intento(s).", "error")
 
             return render_template('login.html')
 
     return render_template('login.html')
+
+@login_requerido
+def auditoria_view():
+    logs = UsuarioModel.get_auditoria()
+    return render_template('auditoria.html', logs=logs, usuario_actual=session.get('usuario_nombre'))
+
+
 def logout_view():
     session.clear()
     return redirect(url_for('login_view'))

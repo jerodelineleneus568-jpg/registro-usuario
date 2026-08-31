@@ -116,3 +116,26 @@ class UsuarioModel:
             conn.commit()
         finally:
             conn.close()
+
+      @staticmethod
+    def registrar_auditoria(correo, ip, evento, descripcion):
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    INSERT INTO auditoria_accesos (correo, ip_origen, evento, descripcion)
+                    VALUES (%s, %s, %s, %s)
+                """, (correo, ip, evento, descripcion))
+            conn.commit()
+        finally:
+            conn.close()
+
+    @staticmethod
+    def get_auditoria():
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("SELECT * FROM auditoria_accesos ORDER BY fecha DESC")
+                return cursor.fetchall()
+        finally:
+            conn.close()      
