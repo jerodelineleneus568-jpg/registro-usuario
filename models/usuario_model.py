@@ -86,7 +86,6 @@ class UsuarioModel:
             with conn.cursor() as cursor:
                 nuevos_intentos = intentos_actuales + 1
                 if nuevos_intentos >= 5:
-                    # Bloquea al usuario por 5 minutos
                     cursor.execute("""
                         UPDATE usuarios 
                         SET intentos_fallidos = %s, 
@@ -117,7 +116,7 @@ class UsuarioModel:
         finally:
             conn.close()
 
-      @staticmethod
+    @staticmethod
     def registrar_auditoria(correo, ip, evento, descripcion):
         conn = get_db_connection()
         try:
@@ -138,4 +137,4 @@ class UsuarioModel:
                 cursor.execute("SELECT * FROM auditoria_accesos ORDER BY fecha DESC")
                 return cursor.fetchall()
         finally:
-            conn.close()      
+            conn.close()

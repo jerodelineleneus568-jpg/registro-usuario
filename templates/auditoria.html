@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auditoría de Seguridad</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+<div class="container">
+    <header class="header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h1>Auditoría de Accesos y Fallos</h1>
+        <div>
+            <a href="{{ url_for('index_view') }}" class="btn btn-add" style="text-decoration: none; padding: 6px 12px; margin-right: 8px;">Volver al Panel</a>
+            <a href="{{ url_for('logout_view') }}" class="btn btn-delete" style="text-decoration: none; padding: 6px 12px;">Cerrar Sesión</a>
+        </div>
+    </header>
+
+    <section class="card">
+        <h2>Registro de Intentos de Acceso</h2>
+        <div class="table-responsive">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Fecha y Hora</th>
+                        <th>Correo Consultado</th>
+                        <th>IP Origen</th>
+                        <th>Evento</th>
+                        <th>Descripción</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in logs %}
+                    <tr>
+                        <td>{{ log.fecha }}</td>
+                        <td>{{ log.correo }}</td>
+                        <td><code>{{ log.ip_origen }}</code></td>
+                        <td>
+                            {% if log.evento == 'LOGIN_EXITOSO' %}
+                                <span style="color: #2e7d32; font-weight: bold;">{{ log.evento }}</span>
+                            {% elif log.evento == 'CUENTA_BLOQUEADA' %}
+                                <span style="color: #c62828; font-weight: bold;">{{ log.evento }}</span>
+                            {% else %}
+                                <span style="color: #d84315; font-weight: bold;">{{ log.evento }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ log.descripcion }}</td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="5" class="empty-state">No se han registrado eventos de acceso.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+</div>
+</body>
+</html>

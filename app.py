@@ -5,6 +5,10 @@ from controllers.usuario_controller import (
     agregar_view, editar_view, eliminar_view
 )
 
+from controllers.usuario_controller import auditoria_view
+
+app.add_url_rule('/auditoria', view_func=auditoria_view, methods=['GET'])
+
 app = Flask(__name__)
 # Clave fija obligatoria para mantener la sesión activa
 app.secret_key = 'clave_secreta_super_segura_12345'
