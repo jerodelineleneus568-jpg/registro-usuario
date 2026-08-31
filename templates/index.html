@@ -44,18 +44,33 @@
                 </thead>
                 <tbody>
                     {% for u in usuarios %}
-                    <tr>
-                        <form action="/editar/{{ u.id }}" method="POST">
-                            <td><span class="badge">#{{ u.id }}</span></td>
-                            <td><input type="text" name="nombre" value="{{ u.nombre }}" required class="input-table"></td>
-                            <td><input type="email" name="correo" value="{{ u.correo }}" required class="input-table"></td>
-                            <td><input type="text" name="rol" value="{{ u.rol }}" required class="input-table"></td>
-                            <td class="actions-cell">
-                                <button type="submit" class="btn btn-edit">Actualizar</button>
-                                <a href="/eliminar/{{ u.id }}" class="btn btn-delete btn-eliminar-confirm" data-nombre="{{ u.nombre }}">Eliminar</a>
-                            </td>
-                        </form>
-                    </tr>
+                   <tr>
+    <!-- Formulario invisible que procesa la edición de esta fila -->
+    <form id="form-editar-{{ u.id }}" action="/editar/{{ u.id }}" method="POST"></form>
+
+    <td><span class="badge">#{{ u.id }}</span></td>
+    
+    <!-- Cada input se asocia al formulario mediante form="form-editar-{{ u.id }}" -->
+    <td>
+        <input type="text" name="nombre" value="{{ u.nombre }}" required class="input-table" form="form-editar-{{ u.id }}">
+    </td>
+    <td>
+        <input type="email" name="correo" value="{{ u.correo }}" required class="input-table" form="form-editar-{{ u.id }}">
+    </td>
+    <td>
+        <input type="text" name="rol" value="{{ u.rol }}" required class="input-table" form="form-editar-{{ u.id }}">
+    </td>
+    
+    <td class="actions-cell">
+        <!-- Botón que envía el formulario de actualización -->
+        <button type="submit" form="form-editar-{{ u.id }}" class="btn btn-edit">Actualizar</button>
+        
+        <!-- Formulario POST independiente para eliminar de forma segura -->
+        <form action="/eliminar/{{ u.id }}" method="POST" style="display:inline;" onsubmit="return confirm('¿Seguro que deseas eliminar a {{ u.nombre }}?');">
+            <button type="submit" class="btn btn-delete">Eliminar</button>
+        </form>
+    </td>
+</tr>
                     {% else %}
                     <tr>
                         <td colspan="5" class="empty-state">No hay registros almacenados en la base de datos.</td>
