@@ -138,3 +138,13 @@ class UsuarioModel:
                 return cursor.fetchall()
         finally:
             conn.close()
+
+     @staticmethod
+    def verify_password(password_plana, hashed_password):
+        try:
+            if not hashed_password:
+                return False
+            return bcrypt.checkpw(password_plana.encode('utf-8'), hashed_password.encode('utf-8'))
+        except (ValueError, TypeError):
+            # Si la clave en la BD no es un hash bcrypt válido, retorna False sin romper la aplicación
+            return False
