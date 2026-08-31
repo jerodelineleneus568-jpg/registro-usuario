@@ -7,7 +7,7 @@ def login_requerido(f):
     def decorada(*args, **kwargs):
         if 'usuario_id' not in session:
             flash("Debes iniciar sesión para acceder.", "error")
-            return redirect(url_for('login'))
+            return redirect(url_for('login_view'))
         return f(*args, **kwargs)
     return decorada
 
@@ -23,7 +23,7 @@ def login_view():
             session['usuario_id'] = usuario['id']
             session['usuario_nombre'] = usuario['nombre']
             session['usuario_rol'] = usuario['rol']
-            return redirect(url_for('index'))
+            return redirect(url_for('index_view'))
         else:
             flash("Credenciales incorrectas.", "error")
             return render_template('login.html')
@@ -32,7 +32,7 @@ def login_view():
 
 def logout_view():
     session.clear()
-    return redirect(url_for('login'))
+    return redirect(url_for('login_view'))
 
 @login_requerido
 def index_view():
@@ -49,11 +49,33 @@ def agregar_view():
 
         if not nombre or not correo or not password:
             flash("Todos los campos son obligatorios.", "error")
-            return redirect(url_for('index'))
+            return redirect(url_for('index_view'))
 
-        UsuarioModel.create(nombre, correo, password, rol)
-        flash("Usuario creado correctamente.", "success")
-        return redirect(url_for('index'))
+        try:
+            UsuarioModel.create(nombre, correo, password, rol)
+            flash("Usuario creado correctamente.", "success")
+        except Exception:
+            flash("El correo electrónico ya se encuentra registrado.", "error")
+
+    return redirect(url_for('index_view'))
+
+@login_requerido
+def editar_view(id_usuario):
+    if request.method == 'POST':
+        nombre = request.form.get('nombre', '').strip()
+        correo = request.form.get('correo', '').strip()
+        rol = request.form.get('rol', 'usuario').strip()
+
+        if not nombre or not correo:
+            flash("Nombre y correo son obligatorios.", "error")
+        else:
+            try:
+                UsuarioModel.update(id_usuario, nombre, correo, rol)
+                flash(f"Usuario #{id_usuario} actualizado correctamente.", "success")
+            except Exception:
+                flash("Error al actualizar. Posible correo duplicado.", "error")
+
+    return redirect(url_for('index_view'))
 
 @login_requerido
 def eliminar_view(id_usuario):
@@ -62,4 +84,4 @@ def eliminar_view(id_usuario):
     else:
         UsuarioModel.delete(id_usuario)
         flash("Usuario eliminado.", "success")
-    return redirect(url_for('index'))
+    return redirect(url_for('index_view'))
