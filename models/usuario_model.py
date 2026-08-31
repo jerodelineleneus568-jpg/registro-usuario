@@ -78,3 +78,41 @@ class UsuarioModel:
             conn.commit()
         finally:
             conn.close()
+
+    @staticmethod
+    def incrementar_intentos(id_usuario, intentos_actuales):
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cursor:
+                nuevos_intentos = intentos_actuales + 1
+                if nuevos_intentos >= 5:
+                    # Bloquea al usuario por 5 minutos
+                    cursor.execute("""
+                        UPDATE usuarios 
+                        SET intentos_fallidos = %s, 
+                            bloqueado_hasta = DATE_ADD(NOW(), INTERVAL 5 MINUTE) 
+                        WHERE id = %s
+                    """, (nuevos_intentos, id_usuario))
+                else:
+                    cursor.execute("""
+                        UPDATE usuarios 
+                        SET intentos_fallidos = %s 
+                        WHERE id = %s
+                    """, (nuevos_intentos, id_usuario))
+            conn.commit()
+        finally:
+            conn.close()
+
+    @staticmethod
+    def reiniciar_intentos(id_usuario):
+        conn = get_db_connection()
+        try:
+            with conn.cursor() as cursor:
+                cursor.execute("""
+                    UPDATE usuarios 
+                    SET intentos_fallidos = 0, bloqueado_hasta = NULL 
+                    WHERE id = %s
+                """, (id_usuario,))
+            conn.commit()
+        finally:
+            conn.close()

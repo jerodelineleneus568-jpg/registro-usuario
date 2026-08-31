@@ -11,6 +11,8 @@ def login_requerido(f):
         return f(*args, **kwargs)
     return decorada
 
+from datetime import datetime
+
 def login_view():
     if request.method == 'POST':
         correo = request.form.get('correo', '').strip()
@@ -18,14 +20,36 @@ def login_view():
 
         usuario = UsuarioModel.get_by_email(correo)
 
-        if usuario and UsuarioModel.verify_password(password, usuario['password_hash']):
+        if not usuario:
+            flash("Credenciales incorrectas.", "error")
+            return render_template('login.html')
+
+        # 1. Comprobar si el usuario está actualmente bloqueado
+        if usuario.get('bloqueado_hasta') and usuario['bloqueado_hasta'] > datetime.now():
+            flash("Cuenta temporalmente bloqueada por demasiados intentos fallidos (5 min).", "error")
+            return render_template('login.html')
+
+        # 2. Verificar contraseña
+        if UsuarioModel.verify_password(password, usuario['password_hash']):
+            # Restablecer intentos al ingresar con éxito
+            UsuarioModel.reiniciar_intentos(usuario['id'])
+            
             session.clear()
             session['usuario_id'] = usuario['id']
             session['usuario_nombre'] = usuario['nombre']
             session['usuario_rol'] = usuario['rol']
             return redirect(url_for('index_view'))
         else:
-            flash("Credenciales incorrectas.", "error")
+            # Incrementar contador de fallos
+            intentos_actuales = usuario.get('intentos_fallidos', 0)
+            UsuarioModel.incrementar_intentos(usuario['id'], intentos_actuales)
+            
+            restantes = 5 - (intentos_actuales + 1)
+            if restantes <= 0:
+                flash("Has superado el límite de 5 intentos. Tu cuenta ha sido bloqueada por 5 minutos.", "error")
+            else:
+                flash(f"Contraseña incorrecta. Te quedan {restantes} intento(s).", "error")
+
             return render_template('login.html')
 
     return render_template('login.html')
