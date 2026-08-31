@@ -29,7 +29,6 @@ def login_view():
             return render_template('login.html')
 
     return render_template('login.html')
-
 def logout_view():
     session.clear()
     return redirect(url_for('login_view'))
