@@ -8,14 +8,27 @@
 </head>
 <body>
 <div class="container">
-    <header class="header">
+    <header class="header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h1>Gestión de Usuarios</h1>
-        
+        <div>
+            <span style="font-size: 14px; margin-right: 15px;">Conectado como: <strong>{{ usuario_actual }}</strong></span>
+            <a href="{{ url_for('logout_view') }}" class="btn btn-delete" style="text-decoration: none; padding: 6px 12px;">Cerrar Sesión</a>
+        </div>
     </header>
+
+    <!-- Bloque de alertas Flash para mostrar mensajes de éxito o error -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="alert alert-{{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
 
     <section class="card">
         <h2>Agregar Usuario</h2>
-        <form id="form-crear" action="/crear" method="POST" class="form-grid">
+        <!-- Se apunta a la función agregar_view y se incluye el campo password -->
+        <form id="form-crear" action="{{ url_for('agregar_view') }}" method="POST" class="form-grid">
             <div class="form-group">
                 <input type="text" name="nombre" placeholder="Nombre completo" required>
             </div>
@@ -23,7 +36,10 @@
                 <input type="email" name="correo" placeholder="Correo electrónico" required>
             </div>
             <div class="form-group">
-                <input type="text" name="rol" placeholder="Rol o cargo" required>
+                <input type="password" name="password" placeholder="Contraseña" required>
+            </div>
+            <div class="form-group">
+                <input type="text" name="rol" placeholder="Rol o cargo (ej. admin/usuario)" required>
             </div>
             <button type="submit" class="btn btn-add">Guardar</button>
         </form>
@@ -44,33 +60,30 @@
                 </thead>
                 <tbody>
                     {% for u in usuarios %}
-                   <tr>
-    <!-- Formulario invisible que procesa la edición de esta fila -->
-    <form id="form-editar-{{ u.id }}" action="/editar/{{ u.id }}" method="POST"></form>
+                    <tr>
+                        <!-- Formulario invisible para procesar la edición -->
+                        <form id="form-editar-{{ u.id }}" action="/editar/{{ u.id }}" method="POST"></form>
 
-    <td><span class="badge">#{{ u.id }}</span></td>
-    
-    <!-- Cada input se asocia al formulario mediante form="form-editar-{{ u.id }}" -->
-    <td>
-        <input type="text" name="nombre" value="{{ u.nombre }}" required class="input-table" form="form-editar-{{ u.id }}">
-    </td>
-    <td>
-        <input type="email" name="correo" value="{{ u.correo }}" required class="input-table" form="form-editar-{{ u.id }}">
-    </td>
-    <td>
-        <input type="text" name="rol" value="{{ u.rol }}" required class="input-table" form="form-editar-{{ u.id }}">
-    </td>
-    
-    <td class="actions-cell">
-        <!-- Botón que envía el formulario de actualización -->
-        <button type="submit" form="form-editar-{{ u.id }}" class="btn btn-edit">Actualizar</button>
-        
-        <!-- Formulario POST independiente para eliminar de forma segura -->
-        <form action="/eliminar/{{ u.id }}" method="POST" style="display:inline;" onsubmit="return confirm('¿Seguro que deseas eliminar a {{ u.nombre }}?');">
-            <button type="submit" class="btn btn-delete">Eliminar</button>
-        </form>
-    </td>
-</tr>
+                        <td><span class="badge">#{{ u.id }}</span></td>
+                        
+                        <td>
+                            <input type="text" name="nombre" value="{{ u.nombre }}" required class="input-table" form="form-editar-{{ u.id }}">
+                        </td>
+                        <td>
+                            <input type="email" name="correo" value="{{ u.correo }}" required class="input-table" form="form-editar-{{ u.id }}">
+                        </td>
+                        <td>
+                            <input type="text" name="rol" value="{{ u.rol }}" required class="input-table" form="form-editar-{{ u.id }}">
+                        </td>
+                        
+                        <td class="actions-cell">
+                            <button type="submit" form="form-editar-{{ u.id }}" class="btn btn-edit">Actualizar</button>
+                            
+                            <form action="/eliminar/{{ u.id }}" method="POST" style="display:inline;" onsubmit="return confirm('¿Seguro que deseas eliminar a {{ u.nombre }}?');">
+                                <button type="submit" class="btn btn-delete">Eliminar</button>
+                            </form>
+                        </td>
+                    </tr>
                     {% else %}
                     <tr>
                         <td colspan="5" class="empty-state">No hay registros almacenados en la base de datos.</td>
