@@ -18,16 +18,14 @@
             {% with messages = get_flashed_messages(with_categories=true) %}
                 {% if messages %}
                     {% for category, message in messages %}
-                        <div class="alert alert-{{ category }}">
-                            {{ message }}
-                        </div>
+                        <div class="alert alert-{{ category }}">{{ message }}</div>
                     {% endfor %}
                 {% endif %}
             {% endwith %}
 
             <form method="POST" action="{{ url_for('login_view') }}">
-                <!-- Token de Protección CSRF (OWASP A01) -->
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <!-- Token CSRF -->
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
 
                 <div style="margin-bottom: 15px;">
                     <label for="correo" style="display: block; font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 5px;">Correo Electrónico</label>
