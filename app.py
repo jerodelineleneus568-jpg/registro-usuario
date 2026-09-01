@@ -22,7 +22,7 @@ csrf = CSRFProtect(app)
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
     SESSION_COOKIE_SAMESITE='Lax',
-    SESSION_COOKIE_SECURE=True,        # Obliga a enviar la cookie solo bajo HTTPS
+    SESSION_COOKIE_SECURE=True,
     PERMANENT_SESSION_LIFETIME=1800
 )
 
@@ -34,10 +34,14 @@ def agregar_cabeceras_seguridad(response):
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
-    response.headers['Content-Security-Policy'] = "default-src 'self'; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;"
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;"
+    )
     return response
 
-# Enrutamiento
+# Enrutamiento hacia los controladores
 app.add_url_rule('/login', view_func=login_view, methods=['GET', 'POST'])
 app.add_url_rule('/logout', view_func=logout_view, methods=['GET'])
 app.add_url_rule('/', view_func=index_view, methods=['GET'])
@@ -65,7 +69,6 @@ def error_500(e):
 
 if __name__ == '__main__':
     if os.path.exists('cert.pem') and os.path.exists('key.pem'):
-        # Puerto 443 (requiere privilegios sudo para ejecutarse)
         app.run(host='0.0.0.0', port=443, ssl_context=('cert.pem', 'key.pem'), debug=False)
     else:
         app.run(host='0.0.0.0', port=5000, debug=False)

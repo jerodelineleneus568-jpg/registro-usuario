@@ -7,6 +7,11 @@ from models.usuario_model import UsuarioModel
 
 logger = logging.getLogger(__name__)
 
+def obtener_ip_origen():
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr) or '127.0.0.1'
+    return ip.split(',')[0].strip() if ',' in ip else ip
+
+
 # --- DECORADORES DE SEGURIDAD (OWASP A01) ---
 
 def login_requerido(f):
@@ -23,6 +28,12 @@ def admin_requerido(f):
     @wraps(f)
     def decorada(*args, **kwargs):
         if session.get('usuario_rol') != 'admin':
+            ip_origen = obtener_ip_origen()
+            correo = session.get('usuario_nombre', 'Desconocido')
+            try:
+                UsuarioModel.registrar_auditoria(correo, ip_origen, 'ACCESO_DENEGADO', f'Intento de acceso no autorizado a {request.path}')
+            except Exception as e:
+                logger.error(f"Error al registrar auditoría de acceso denegado: {e}")
             flash("Acceso denegado: permisos insuficientes.", "error")
             return redirect(url_for('index_view'))
         return f(*args, **kwargs)
@@ -32,14 +43,11 @@ def admin_requerido(f):
 # --- AUTENTICACIÓN Y SESIÓN (OWASP A07, A09) ---
 
 def login_view():
-    ip_origen = request.headers.get('X-Forwarded-For', request.remote_addr) or '127.0.0.1'
-    if ',' in ip_origen:
-        ip_origen = ip_origen.split(',')[0].strip()
+    ip_origen = obtener_ip_origen()
 
     if request.method == 'POST':
         correo = request.form.get('correo', '').strip().lower()
         password = request.form.get('password', '')
-
         mensaje_error_generico = "Credenciales incorrectas o cuenta temporalmente suspendida."
 
         if not correo or not password:
@@ -109,6 +117,13 @@ def login_view():
 
 
 def logout_view():
+    correo = session.get('usuario_nombre', 'Sesión')
+    ip_origen = obtener_ip_origen()
+    try:
+        UsuarioModel.registrar_auditoria(correo, ip_origen, 'LOGOUT', 'Cierre de sesión seguro')
+    except Exception as e:
+        logger.error(f"Error registrando logout: {e}")
+        
     session.clear()
     flash("Sesión finalizada de forma segura.", "success")
     return redirect(url_for('login_view'))
@@ -129,9 +144,10 @@ def agregar_view():
         nombre = request.form.get('nombre', '').strip()
         correo = request.form.get('correo', '').strip().lower()
         rol = request.form.get('rol', 'usuario').strip()
-        password_default = "123456"  # Contraseña inicial predeterminada
+        password_default = "123456"
+        ip_origen = obtener_ip_origen()
+        admin_actual = session.get('usuario_nombre', 'Admin')
 
-        # Validación de campos y formato de correo
         patron_correo = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
         if not nombre or not correo or not re.match(patron_correo, correo):
             flash("Datos de entrada inválidos o formato de correo incorrecto.", "error")
@@ -143,9 +159,11 @@ def agregar_view():
 
         try:
             UsuarioModel.create(nombre, correo, password_default, rol)
+            UsuarioModel.registrar_auditoria(admin_actual, ip_origen, 'CREAR_USUARIO', f'Creó al usuario: {correo} (Rol: {rol})')
             flash("Usuario registrado exitosamente con clave por defecto.", "success")
-        except Exception:
-            flash("Error: El correo electrónico ya se encuentra registrado.", "error")
+        except Exception as e:
+            logger.error(f"Error al crear usuario: {e}")
+            flash("Error: El correo electrónico ya se encuentra registrado o hubo un fallo en base de datos.", "error")
 
     return redirect(url_for('index_view'))
 
@@ -157,6 +175,8 @@ def editar_view(id_usuario):
         nombre = request.form.get('nombre', '').strip()
         correo = request.form.get('correo', '').strip().lower()
         rol = request.form.get('rol', 'usuario').strip()
+        ip_origen = obtener_ip_origen()
+        admin_actual = session.get('usuario_nombre', 'Admin')
 
         patron_correo = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
         if not nombre or not correo or not re.match(patron_correo, correo):
@@ -169,6 +189,7 @@ def editar_view(id_usuario):
 
         try:
             UsuarioModel.update(id_usuario, nombre, correo, rol)
+            UsuarioModel.registrar_auditoria(admin_actual, ip_origen, 'ACTUALIZAR_USUARIO', f'Actualizó ID #{id_usuario}: {correo} (Rol: {rol})')
             flash("Registro actualizado correctamente.", "success")
         except Exception as e:
             logger.error(f"Error al actualizar: {e}")
@@ -185,8 +206,12 @@ def eliminar_view(id_usuario):
             flash("Operación denegada: No puedes eliminar tu propia cuenta activa.", "error")
             return redirect(url_for('index_view'))
 
+        ip_origen = obtener_ip_origen()
+        admin_actual = session.get('usuario_nombre', 'Admin')
+
         try:
             UsuarioModel.delete(id_usuario)
+            UsuarioModel.registrar_auditoria(admin_actual, ip_origen, 'ELIMINAR_USUARIO', f'Eliminó al usuario con ID #{id_usuario}')
             flash("Usuario eliminado de la base de datos.", "success")
         except Exception as e:
             logger.error(f"Error al eliminar: {e}")

@@ -60,7 +60,9 @@
                         <th>Nombre</th>
                         <th>Correo</th>
                         <th>Rol</th>
-                        <th>Acciones</th>
+                        {% if session.get('usuario_rol') == 'admin' %}
+                            <th>Acciones</th>
+                        {% endif %}
                     </tr>
                 </thead>
                 <tbody>
@@ -99,22 +101,22 @@
                             {% endif %}
                         </td>
                         
+                        {% if session.get('usuario_rol') == 'admin' %}
                         <td class="actions-cell">
-                            {% if session.get('usuario_rol') == 'admin' %}
-                                <button type="submit" form="form-editar-{{ u.id }}" class="btn btn-edit">Actualizar</button>
-                                
-                                <form action="{{ url_for('eliminar_view', id_usuario=u.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('¿Seguro que deseas eliminar este usuario?');">
-                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                                    <button type="submit" class="btn btn-delete">Eliminar</button>
-                                </form>
-                            {% else %}
-                                <span style="color: #64748b; font-size: 13px;">Solo lectura</span>
-                            {% endif %}
+                            <button type="submit" form="form-editar-{{ u.id }}" class="btn btn-edit">Actualizar</button>
+                            
+                            <form action="{{ url_for('eliminar_view', id_usuario=u.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('¿Seguro que deseas eliminar este usuario?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                                <button type="submit" class="btn btn-delete">Eliminar</button>
+                            </form>
                         </td>
+                        {% endif %}
                     </tr>
                     {% else %}
                     <tr>
-                        <td colspan="5" class="empty-state">No hay registros almacenados en la base de datos.</td>
+                        <td colspan="{% if session.get('usuario_rol') == 'admin' %}5{% else %}4{% endif %}" class="empty-state">
+                            No hay registros almacenados en la base de datos.
+                        </td>
                     </tr>
                     {% endfor %}
                 </tbody>
