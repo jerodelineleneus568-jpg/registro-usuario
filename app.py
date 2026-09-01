@@ -64,8 +64,8 @@ def error_500(e):
     return render_template('error.html', error_codigo=500, mensaje="Error interno del servidor procesado de forma segura."), 500
 
 if __name__ == '__main__':
-    # Habilita contexto SSL con los certificados generados
     if os.path.exists('cert.pem') and os.path.exists('key.pem'):
-        app.run(host='0.0.0.0', port=5000, ssl_context=('cert.pem', 'key.pem'), debug=False)
+        # Puerto 443 (requiere privilegios sudo para ejecutarse)
+        app.run(host='0.0.0.0', port=443, ssl_context=('cert.pem', 'key.pem'), debug=False)
     else:
         app.run(host='0.0.0.0', port=5000, debug=False)
