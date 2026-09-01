@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Error {{ error_codigo }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+<div class="container" style="max-width: 500px; margin-top: 80px; text-align: center;">
+    <section class="card">
+        <h1>Error {{ error_codigo }}</h1>
+        <p style="margin: 20px 0;">{{ mensaje }}</p>
+        <a href="{{ url_for('index_view') }}" class="btn btn-add" style="text-decoration: none; display: inline-block;">Volver al Inicio</a>
+    </section>
+</div>
+</body>
+</html>

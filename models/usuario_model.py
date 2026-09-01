@@ -9,13 +9,14 @@ class UsuarioModel:
         return bcrypt.hashpw(password_plana.encode('utf-8'), salt).decode('utf-8')
 
     @staticmethod
-    def verify_password(password_plana, hashed_password):
-        try:
-            if not hashed_password:
-                return False
-            return bcrypt.checkpw(password_plana.encode('utf-8'), hashed_password.encode('utf-8'))
-        except (ValueError, TypeError):
+    def verify_password(password_plana, password_hash):
+        if not password_plana or not password_hash:
             return False
+        if isinstance(password_hash, str):
+            password_hash = password_hash.encode('utf-8')
+        if isinstance(password_plana, str):
+            password_plana = password_plana.encode('utf-8')
+        return bcrypt.checkpw(password_plana, password_hash)
 
     @staticmethod
     def get_all():
@@ -142,4 +143,4 @@ class UsuarioModel:
                 cursor.execute("SELECT * FROM auditoria_accesos ORDER BY fecha DESC")
                 return cursor.fetchall()
         finally:
-            conn.close() 
+            conn.close()
