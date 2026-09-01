@@ -5,9 +5,7 @@ from flask import render_template, request, redirect, url_for, session, flash
 from models.usuario_model import UsuarioModel
 
 
-# ====================================================================
 # DECORADORES DE SEGURIDAD (CONTROL DE ACCESO - OWASP A01)
-# ====================================================================
 
 def login_requerido(f):
     @wraps(f)
@@ -29,9 +27,7 @@ def admin_requerido(f):
     return decorada
 
 
-# ====================================================================
 # AUTENTICACIÓN Y SESIÓN (OWASP A07 & A09)
-# ====================================================================
 
 def login_view():
     ip_origen = request.remote_addr or '127.0.0.1'
@@ -113,9 +109,7 @@ def logout_view():
     return redirect(url_for('login_view'))
 
 
-# ====================================================================
 # PANEL CRUD Y GESTIÓN DE USUARIOS
-# ====================================================================
 
 @login_requerido
 def index_view():
@@ -172,9 +166,8 @@ def eliminar_view(id_usuario):
     return redirect(url_for('index_view'))
 
 
-# ====================================================================
+
 # AUDITORÍA Y MONITOREO
-# ====================================================================
 
 @login_requerido
 @admin_requerido
