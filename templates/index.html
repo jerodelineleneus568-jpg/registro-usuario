@@ -11,7 +11,7 @@
     <header class="header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
         <h1>Gestión de Usuarios</h1>
         <div style="display: flex; align-items: center; gap: 10px;">
-            <span style="font-size: 14px;">Conectado como: <strong>{{ usuario_actual }}</strong></span>
+            <span style="font-size: 14px;">Conectado como: <strong>{{ usuario_actual }}</strong> (Rol: <em>{{ session.get('usuario_rol') }}</em>)</span>
             {% if session.get('usuario_rol') == 'admin' %}
                 <a href="{{ url_for('auditoria_view') }}" class="btn btn-edit" style="text-decoration: none; padding: 6px 14px;">Ver Auditoría</a>
             {% endif %}
@@ -19,7 +19,6 @@
         </div>
     </header>
 
-    <!-- Bloque de alertas Flash -->
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
@@ -28,14 +27,12 @@
         {% endif %}
     {% endwith %}
 
-    <!-- Sección Crear Usuario (Solo administradores) -->
+    <!-- SOLO ADMINISTRADOR: Crear Usuarios -->
     {% if session.get('usuario_rol') == 'admin' %}
     <section class="card">
         <h2>Agregar Usuario</h2>
         <form id="form-crear" action="{{ url_for('agregar_view') }}" method="POST" class="form-grid">
-            <!-- Token CSRF Crear -->
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-            
             <div class="form-group">
                 <input type="text" name="nombre" placeholder="Nombre completo" required>
             </div>
@@ -69,33 +66,44 @@
                 <tbody>
                     {% for u in usuarios %}
                     <tr>
-                        <!-- Formulario oculto para editar la fila -->
-                        <form id="form-editar-{{ u.id }}" action="{{ url_for('editar_view', id_usuario=u.id) }}" method="POST">
-                            <!-- Token CSRF Editar -->
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                        </form>
+                        {% if session.get('usuario_rol') == 'admin' %}
+                            <form id="form-editar-{{ u.id }}" action="{{ url_for('editar_view', id_usuario=u.id) }}" method="POST">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                            </form>
+                        {% endif %}
 
                         <td><span class="badge">#{{ u.id }}</span></td>
                         
                         <td>
-                            <input type="text" name="nombre" value="{{ u.nombre }}" required class="input-table" form="form-editar-{{ u.id }}" {% if session.get('usuario_rol') != 'admin' %}disabled{% endif %}>
+                            {% if session.get('usuario_rol') == 'admin' %}
+                                <input type="text" name="nombre" value="{{ u.nombre }}" required class="input-table" form="form-editar-{{ u.id }}">
+                            {% else %}
+                                {{ u.nombre }}
+                            {% endif %}
                         </td>
                         <td>
-                            <input type="email" name="correo" value="{{ u.correo }}" required class="input-table" form="form-editar-{{ u.id }}" {% if session.get('usuario_rol') != 'admin' %}disabled{% endif %}>
+                            {% if session.get('usuario_rol') == 'admin' %}
+                                <input type="email" name="correo" value="{{ u.correo }}" required class="input-table" form="form-editar-{{ u.id }}">
+                            {% else %}
+                                {{ u.correo }}
+                            {% endif %}
                         </td>
                         <td>
-                            <select name="rol" required class="input-table" form="form-editar-{{ u.id }}" {% if session.get('usuario_rol') != 'admin' %}disabled{% endif %}>
-                                <option value="usuario" {% if u.rol == 'usuario' %}selected{% endif %}>usuario</option>
-                                <option value="admin" {% if u.rol == 'admin' %}selected{% endif %}>admin</option>
-                            </select>
+                            {% if session.get('usuario_rol') == 'admin' %}
+                                <select name="rol" required class="input-table" form="form-editar-{{ u.id }}">
+                                    <option value="usuario" {% if u.rol == 'usuario' %}selected{% endif %}>usuario</option>
+                                    <option value="admin" {% if u.rol == 'admin' %}selected{% endif %}>admin</option>
+                                </select>
+                            {% else %}
+                                <span class="badge">{{ u.rol }}</span>
+                            {% endif %}
                         </td>
                         
                         <td class="actions-cell">
                             {% if session.get('usuario_rol') == 'admin' %}
                                 <button type="submit" form="form-editar-{{ u.id }}" class="btn btn-edit">Actualizar</button>
                                 
-                                <form action="{{ url_for('eliminar_view', id_usuario=u.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('¿Seguro que deseas eliminar a {{ u.nombre }}?');">
-                                    <!-- Token CSRF Eliminar -->
+                                <form action="{{ url_for('eliminar_view', id_usuario=u.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('¿Seguro que deseas eliminar este usuario?');">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                     <button type="submit" class="btn btn-delete">Eliminar</button>
                                 </form>
@@ -114,7 +122,5 @@
         </div>
     </section>
 </div>
-
-<script src="{{ url_for('static', filename='js/main.js') }}"></script>
 </body>
 </html>
