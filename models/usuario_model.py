@@ -1,7 +1,16 @@
 import bcrypt
+import re
 from config import get_db_connection
 
 class UsuarioModel:
+
+    @staticmethod
+    def validar_password_fuerte(password: str) -> bool:
+        """Exige mínimo 8 caracteres, al menos una mayúscula, un número y un caracter especial."""
+        if len(password) < 8:
+            return False
+        patron = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#/._-]).{8,}$'
+        return bool(re.match(patron, password))
 
     @staticmethod
     def hash_password(password_plana):
@@ -16,14 +25,17 @@ class UsuarioModel:
             password_hash = password_hash.encode('utf-8')
         if isinstance(password_plana, str):
             password_plana = password_plana.encode('utf-8')
-        return bcrypt.checkpw(password_plana, password_hash)
+        try:
+            return bcrypt.checkpw(password_plana, password_hash)
+        except (ValueError, TypeError):
+            return False
 
     @staticmethod
     def get_all():
         conn = get_db_connection()
         try:
             with conn.cursor() as cursor:
-                cursor.execute("SELECT id, nombre, correo, rol FROM usuarios ORDER BY id DESC")
+                cursor.execute("SELECT id, nombre, correo, rol, intentos_fallidos, bloqueado_hasta FROM usuarios ORDER BY id DESC")
                 return cursor.fetchall()
         finally:
             conn.close()
@@ -43,7 +55,7 @@ class UsuarioModel:
         conn = get_db_connection()
         try:
             with conn.cursor() as cursor:
-                cursor.execute("SELECT * FROM usuarios WHERE correo = %s", (correo,))
+                cursor.execute("SELECT id, nombre, correo, password_hash, rol, intentos_fallidos, bloqueado_hasta FROM usuarios WHERE correo = %s", (correo,))
                 return cursor.fetchone()
         finally:
             conn.close()
@@ -86,24 +98,20 @@ class UsuarioModel:
             conn.close()
 
     @staticmethod
-    def incrementar_intentos(id_usuario, intentos_actuales):
+    def incrementar_intentos(id_usuario):
+        """Operación atómica en BD: evita condiciones de carrera (OWASP A04)."""
         conn = get_db_connection()
         try:
             with conn.cursor() as cursor:
-                nuevos_intentos = intentos_actuales + 1
-                if nuevos_intentos >= 5:
-                    cursor.execute("""
-                        UPDATE usuarios 
-                        SET intentos_fallidos = %s, 
-                            bloqueado_hasta = DATE_ADD(NOW(), INTERVAL 5 MINUTE) 
-                        WHERE id = %s
-                    """, (nuevos_intentos, id_usuario))
-                else:
-                    cursor.execute("""
-                        UPDATE usuarios 
-                        SET intentos_fallidos = %s 
-                        WHERE id = %s
-                    """, (nuevos_intentos, id_usuario))
+                cursor.execute("""
+                    UPDATE usuarios 
+                    SET intentos_fallidos = intentos_fallidos + 1,
+                        bloqueado_hasta = CASE 
+                            WHEN intentos_fallidos + 1 >= 5 THEN DATE_ADD(UTC_TIMESTAMP(), INTERVAL 5 MINUTE)
+                            ELSE bloqueado_hasta 
+                        END
+                    WHERE id = %s
+                """, (id_usuario,))
             conn.commit()
         finally:
             conn.close()
@@ -128,19 +136,19 @@ class UsuarioModel:
         try:
             with conn.cursor() as cursor:
                 cursor.execute("""
-                    INSERT INTO auditoria_accesos (correo, ip_origen, evento, descripcion)
-                    VALUES (%s, %s, %s, %s)
+                    INSERT INTO auditoria_accesos (correo, ip_origen, evento, descripcion, fecha)
+                    VALUES (%s, %s, %s, %s, UTC_TIMESTAMP())
                 """, (correo, ip, evento, descripcion))
             conn.commit()
         finally:
             conn.close()
 
     @staticmethod
-    def get_auditoria():
+    def get_auditoria(limite=100):
         conn = get_db_connection()
         try:
             with conn.cursor() as cursor:
-                cursor.execute("SELECT * FROM auditoria_accesos ORDER BY fecha DESC")
+                cursor.execute("SELECT id, correo, ip_origen, evento, descripcion, fecha FROM auditoria_accesos ORDER BY fecha DESC LIMIT %s", (limite,))
                 return cursor.fetchall()
         finally:
             conn.close()

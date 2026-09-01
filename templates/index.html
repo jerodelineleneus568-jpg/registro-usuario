@@ -29,6 +29,7 @@
     <section class="card">
         <h2>Agregar Usuario</h2>
         <form id="form-crear" action="{{ url_for('agregar_view') }}" method="POST" class="form-grid">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="form-group">
                 <input type="text" name="nombre" placeholder="Nombre completo" required>
             </div>
@@ -36,7 +37,10 @@
                 <input type="email" name="correo" placeholder="Correo electrónico" required>
             </div>
             <div class="form-group">
-                <input type="text" name="rol" placeholder="Rol o cargo (ej. admin/usuario)" required>
+                <select name="rol" required class="input-table">
+                    <option value="usuario">Usuario</option>
+                    <option value="admin">Administrador</option>
+                </select>
             </div>
             <button type="submit" class="btn btn-add">Guardar</button>
         </form>
@@ -58,8 +62,10 @@
                 <tbody>
                     {% for u in usuarios %}
                     <tr>
-                        <!-- Formulario invisible para procesar la edición -->
-                        <form id="form-editar-{{ u.id }}" action="/editar/{{ u.id }}" method="POST"></form>
+                        <!-- Formulario oculto para editar la fila correspondiente -->
+                        <form id="form-editar-{{ u.id }}" action="{{ url_for('editar_view', id_usuario=u.id) }}" method="POST">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        </form>
 
                         <td><span class="badge">#{{ u.id }}</span></td>
                         
@@ -70,13 +76,17 @@
                             <input type="email" name="correo" value="{{ u.correo }}" required class="input-table" form="form-editar-{{ u.id }}">
                         </td>
                         <td>
-                            <input type="text" name="rol" value="{{ u.rol }}" required class="input-table" form="form-editar-{{ u.id }}">
+                            <select name="rol" required class="input-table" form="form-editar-{{ u.id }}">
+                                <option value="usuario" {% if u.rol == 'usuario' %}selected{% endif %}>usuario</option>
+                                <option value="admin" {% if u.rol == 'admin' %}selected{% endif %}>admin</option>
+                            </select>
                         </td>
                         
                         <td class="actions-cell">
                             <button type="submit" form="form-editar-{{ u.id }}" class="btn btn-edit">Actualizar</button>
                             
-                            <form action="/eliminar/{{ u.id }}" method="POST" style="display:inline;" onsubmit="return confirm('¿Seguro que deseas eliminar a {{ u.nombre }}?');">
+                            <form action="{{ url_for('eliminar_view', id_usuario=u.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('¿Seguro que deseas eliminar a {{ u.nombre }}?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                                 <button type="submit" class="btn btn-delete">Eliminar</button>
                             </form>
                         </td>

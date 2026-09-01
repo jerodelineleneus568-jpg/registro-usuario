@@ -14,25 +14,29 @@
                 <p class="subtitle">Panel Seguro</p>
             </div>
 
-          {% with messages = get_flashed_messages(with_categories=true) %}
-    {% if messages %}
-        {% for category, message in messages %}
-            <div class="alert alert-{{ category }}">
-                {{ message }}
-            </div>
-        {% endfor %}
-    {% endif %}
-{% endwith %}
+            <!-- Alertas Flash -->
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ category }}">
+                            {{ message }}
+                        </div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
 
             <form method="POST" action="{{ url_for('login_view') }}">
+                <!-- Token de Protección CSRF (OWASP A01) -->
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
                 <div style="margin-bottom: 15px;">
-                    <label style="font-size: 13px; font-weight: 600; color: #475569;">Correo Electrónico</label>
-                    <input type="email" name="correo" required autocomplete="username" placeholder="usuario@correo.com">
+                    <label for="correo" style="display: block; font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 5px;">Correo Electrónico</label>
+                    <input type="email" id="correo" name="correo" required autocomplete="username" placeholder="usuario@correo.com" class="input-table" style="width: 100%;">
                 </div>
 
                 <div style="margin-bottom: 20px;">
-                    <label style="font-size: 13px; font-weight: 600; color: #475569;">Contraseña</label>
-                    <input type="password" name="password" required autocomplete="current-password" placeholder="••••••••">
+                    <label for="password" style="display: block; font-size: 13px; font-weight: 600; color: #475569; margin-bottom: 5px;">Contraseña</label>
+                    <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="••••••••" class="input-table" style="width: 100%;">
                 </div>
 
                 <button type="submit" class="btn btn-add" style="width: 100%;">Entrar</button>
