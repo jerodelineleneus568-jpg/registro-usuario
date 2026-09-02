@@ -11,13 +11,17 @@ load_dotenv()
 
 app = Flask(__name__)
 
+# [OWASP A02: Generación segura de clave secreta en caso de ausencia]
 secret_key = os.getenv('SECRET_KEY')
 if not secret_key:
     secret_key = os.urandom(32).hex()
 
 app.secret_key = secret_key
+
+# [OWASP A08: Integración global de protección CSRF para todos los métodos POST]
 csrf = CSRFProtect(app)
 
+# [OWASP A02 & A07: Endurecimiento de Cookies de sesión contra secuestros y fugas]
 # Configuración estricta de Cookies y HTTPS
 app.config.update(
     SESSION_COOKIE_HTTPONLY=True,
@@ -26,6 +30,8 @@ app.config.update(
     PERMANENT_SESSION_LIFETIME=1800
 )
 
+# [OWASP A05: Cabeceras defensivas para mitigar Clickjacking, MIME sniffing y XSS]
+
 # Cabeceras de Seguridad HTTP
 @app.after_request
 def agregar_cabeceras_seguridad(response):
@@ -33,7 +39,9 @@ def agregar_cabeceras_seguridad(response):
     response.headers['X-Content-Type-Options'] = 'nosniff'
     response.headers['X-XSS-Protection'] = '1; mode=block'
     response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    # [OWASP A02: HSTS para forzar uso exclusivo de HTTPS en el cliente]
     response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+    # [OWASP A03 & A05: Content-Security-Policy restrictiva]
     response.headers['Content-Security-Policy'] = (
         "default-src 'self'; "
         "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
@@ -50,6 +58,7 @@ app.add_url_rule('/editar/<int:id_usuario>', view_func=editar_view, methods=['PO
 app.add_url_rule('/eliminar/<int:id_usuario>', view_func=eliminar_view, methods=['POST'])
 app.add_url_rule('/auditoria', view_func=auditoria_view, methods=['GET'])
 
+# [OWASP A05: Páginas de error genéricas sin exposición de trazas ni código fuente]
 # Manejadores de error
 @app.errorhandler(400)
 def error_400(e):
@@ -68,6 +77,7 @@ def error_500(e):
     return render_template('error.html', error_codigo=500, mensaje="Error interno del servidor procesado de forma segura."), 500
 
 if __name__ == '__main__':
+    # [OWASP A02 & A05: Cifrado en tránsito obligatorio (HTTPS/443) y depuración desactivada]
     if os.path.exists('cert.pem') and os.path.exists('key.pem'):
         app.run(host='0.0.0.0', port=443, ssl_context=('cert.pem', 'key.pem'), debug=False)
     else:

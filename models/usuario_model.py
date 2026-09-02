@@ -4,6 +4,7 @@ from config import get_db_connection
 
 class UsuarioModel:
 
+    # OWASP A07: Validación de fortaleza minima de contraseña
     @staticmethod
     def validar_password_fuerte(password: str) -> bool:
         """Exige mínimo 8 caracteres, al menos una mayúscula, un número y un caracter especial."""
@@ -12,11 +13,14 @@ class UsuarioModel:
         patron = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#/._-]).{8,}$'
         return bool(re.match(patron, password))
 
+        # OWASP A02: Hashing con sal aleatoria y coste computacional elevado
+
     @staticmethod
     def hash_password(password_plana):
         salt = bcrypt.gensalt(rounds=12)
         return bcrypt.hashpw(password_plana.encode('utf-8'), salt).decode('utf-8')
 
+        # OWASP A02: Verificacion segura de hashes sin riesgo de fuga en tiempo de ejecucion
     @staticmethod
     def verify_password(password_plana, password_hash):
         if not password_plana or not password_hash:
@@ -30,6 +34,8 @@ class UsuarioModel:
         except (ValueError, TypeError):
             return False
 
+         # OWASP A03: Consultas preparadas usando tuplas %s contra inyección SQL
+
     @staticmethod
     def get_all():
         conn = get_db_connection()
@@ -40,6 +46,7 @@ class UsuarioModel:
         finally:
             conn.close()
 
+            # Parametrización estricta por ID
     @staticmethod
     def get_by_id(id_usuario):
         conn = get_db_connection()
@@ -49,6 +56,8 @@ class UsuarioModel:
                 return cursor.fetchone()
         finally:
             conn.close()
+
+            # Parametrizacion estricta por Correo
 
     @staticmethod
     def get_by_email(correo):
@@ -60,6 +69,7 @@ class UsuarioModel:
         finally:
             conn.close()
 
+            # OWASP A02 & A03: Almacenamiento seguro de clave cifrada con consulta parametrizada
     @staticmethod
     def create(nombre, correo, password_plana, rol='usuario'):
         hashed_password = UsuarioModel.hash_password(password_plana)
@@ -74,6 +84,8 @@ class UsuarioModel:
         finally:
             conn.close()
 
+            # OWASP A03: Actualizacion parametrizada de datos de usuario
+
     @staticmethod
     def update(id_usuario, nombre, correo, rol):
         conn = get_db_connection()
@@ -87,6 +99,8 @@ class UsuarioModel:
         finally:
             conn.close()
 
+            #  Eliminacion parametrizada
+
     @staticmethod
     def delete(id_usuario):
         conn = get_db_connection()
@@ -97,6 +111,7 @@ class UsuarioModel:
         finally:
             conn.close()
 
+            # OWASP A04 & A07: O peracion atomica contra race conditions y bloque temporal por fuerza bruta
     @staticmethod
     def incrementar_intentos(id_usuario):
         """Operación atómica en BD: evita condiciones de carrera (OWASP A04)."""
@@ -116,6 +131,7 @@ class UsuarioModel:
         finally:
             conn.close()
 
+            # OWASP A07: Reinicio del contador de intentos tras login exitoso
     @staticmethod
     def reiniciar_intentos(id_usuario):
         conn = get_db_connection()
@@ -130,6 +146,8 @@ class UsuarioModel:
         finally:
             conn.close()
 
+            # OWASP A09: Registro persistente en tabla de auditoría con marca temporal
+
     @staticmethod
     def registrar_auditoria(correo, ip, evento, descripcion):
         conn = get_db_connection()
@@ -142,6 +160,8 @@ class UsuarioModel:
             conn.commit()
         finally:
             conn.close()
+
+            # OWASP A09: Consulta de bitácoras de auditoría
 
     @staticmethod
     def get_auditoria(limite=100):
