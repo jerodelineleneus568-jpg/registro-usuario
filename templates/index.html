@@ -5,6 +5,53 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Gestión de Usuarios - CRUD</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        .toolbar-table {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        .search-box {
+            padding: 8px 14px;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            width: 280px;
+            outline: none;
+            font-size: 14px;
+        }
+        .pagination-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+            font-size: 14px;
+            color: #64748b;
+        }
+        .pagination-buttons {
+            display: flex;
+            gap: 6px;
+        }
+        .btn-page {
+            padding: 5px 12px;
+            border: 1px solid #cbd5e1;
+            background: #ffffff;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+        .btn-page.active {
+            background: #2563eb;
+            color: #ffffff;
+            border-color: #2563eb;
+        }
+        .btn-page:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+    </style>
 </head>
 <body>
 <div class="container">
@@ -51,9 +98,13 @@
     {% endif %}
 
     <section class="card">
-        <h2>Lista de Registros</h2>
+        <div class="toolbar-table">
+            <h2>Lista de Registros</h2>
+            <input type="text" id="buscador" class="search-box" placeholder="🔍 Buscar por nombre, correo o rol...">
+        </div>
+
         <div class="table-responsive">
-            <table>
+            <table id="tabla-usuarios">
                 <thead>
                     <tr>
                         <th>ID</th>
@@ -65,9 +116,9 @@
                         {% endif %}
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="tbody-usuarios">
                     {% for u in usuarios %}
-                    <tr>
+                    <tr class="fila-dato">
                         {% if session.get('usuario_rol') == 'admin' %}
                             <form id="form-editar-{{ u.id }}" action="{{ url_for('editar_view', id_usuario=u.id) }}" method="POST">
                                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
@@ -122,7 +173,102 @@
                 </tbody>
             </table>
         </div>
+
+        <!-- Controles de Paginación -->
+        <div class="pagination-container" id="contenedor-paginacion">
+            <span id="info-paginacion">Mostrando registros</span>
+            <div class="pagination-buttons" id="botones-paginacion"></div>
+        </div>
     </section>
 </div>
+
+<!-- LÓGICA DE BÚSQUEDA Y PAGINACIÓN -->
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    const filas = Array.from(document.querySelectorAll('.fila-dato'));
+    const buscador = document.getElementById('buscador');
+    const infoPaginacion = document.getElementById('info-paginacion');
+    const contenedorBotones = document.getElementById('botones-paginacion');
+
+    const filasPorPagina = 5; // Cambia este número para ajustar registros por página
+    let paginaActual = 1;
+    let filasFiltradas = [...filas];
+
+    function renderizar() {
+        // Ocultar todas las filas
+        filas.forEach(f => f.style.display = 'none');
+
+        const total = filasFiltradas.length;
+        const totalPaginas = Math.ceil(total / filasPorPagina) || 1;
+
+        if (paginaActual > totalPaginas) paginaActual = 1;
+
+        const inicio = (paginaActual - 1) * filasPorPagina;
+        const fin = inicio + filasPorPagina;
+
+        // Mostrar solo las de la página actual
+        filasFiltradas.slice(inicio, fin).forEach(f => f.style.display = '');
+
+        // Actualizar texto informativo
+        if (total === 0) {
+            infoPaginacion.textContent = 'No se encontraron resultados';
+        } else {
+            const desde = inicio + 1;
+            const hasta = Math.min(fin, total);
+            infoPaginacion.textContent = `Mostrando ${desde} a ${hasta} de ${total} registros`;
+        }
+
+        // Renderizar botones de paginación
+        contenedorBotones.innerHTML = '';
+
+        if (totalPaginas > 1) {
+            // Botón Anterior
+            const btnPrev = document.createElement('button');
+            btnPrev.textContent = '«';
+            btnPrev.className = 'btn-page';
+            btnPrev.disabled = paginaActual === 1;
+            btnPrev.onclick = () => { paginaActual--; renderizar(); };
+            contenedorBotones.appendChild(btnPrev);
+
+            // Botones numéricos
+            for (let i = 1; i <= totalPaginas; i++) {
+                const btn = document.createElement('button');
+                btn.textContent = i;
+                btn.className = `btn-page ${i === paginaActual ? 'active' : ''}`;
+                btn.onclick = () => { paginaActual = i; renderizar(); };
+                contenedorBotones.appendChild(btn);
+            }
+
+            // Botón Siguiente
+            const btnNext = document.createElement('button');
+            btnNext.textContent = '»';
+            btnNext.className = 'btn-page';
+            btnNext.disabled = paginaActual === totalPaginas;
+            btnNext.onclick = () => { paginaActual++; renderizar(); };
+            contenedorBotones.appendChild(btnNext);
+        }
+    }
+
+    // Evento de búsqueda en tiempo real (ignora mayúsculas/minúsculas)
+    buscador.addEventListener('input', (e) => {
+        const termino = e.target.value.toLowerCase().trim();
+
+        filasFiltradas = filas.filter(fila => {
+            // Extrae tanto el texto como los valores de los inputs/selects de la fila
+            const textoFila = Array.from(fila.querySelectorAll('td, input, select'))
+                .map(el => el.value !== undefined ? el.value : el.textContent)
+                .join(' ')
+                .toLowerCase();
+            return textoFila.includes(termino);
+        });
+
+        paginaActual = 1;
+        renderizar();
+    });
+
+    // Carga inicial
+    renderizar();
+});
+</script>
 </body>
 </html>
