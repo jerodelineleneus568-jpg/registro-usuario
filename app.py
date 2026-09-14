@@ -72,11 +72,10 @@ def error_500(e):
     return render_template('error.html', error_codigo=500, mensaje="Error interno del servidor procesado de forma segura."), 500
 
 if __name__ == '__main__':
-    # Configuración dinámica de interfaz para mitigar Bandit B104
-    bind_host = os.getenv('FLASK_RUN_HOST', '0.0.0.0')
+    # Fallback a localhost por defecto para desarrollo seguro (mitiga B104)
+    bind_host = os.getenv('FLASK_RUN_HOST', '127.0.0.1')
     
     if os.path.exists('cert.pem') and os.path.exists('key.pem'):
         app.run(host=bind_host, port=443, ssl_context=('cert.pem', 'key.pem'), debug=False)
     else:
-        # Fallback con contexto adhoc si no existen certificados explícitos
         app.run(host=bind_host, port=5000, ssl_context='adhoc', debug=False)
