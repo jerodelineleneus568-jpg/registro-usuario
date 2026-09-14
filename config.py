@@ -24,5 +24,5 @@ DB_CONFIG = {
 def get_db_connection():
     try:
         return pymysql.connect(**DB_CONFIG)
-    except pymysql.MySQLError as e:
-        raise ConnectionError(f"Error conectando a la base de datos: {e}") from e
+    except pymysql.MySQLError:
+        raise ConnectionError("No fue posible establecer conexión con el servicio de base de datos.")

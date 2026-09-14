@@ -7,7 +7,7 @@ from models.usuario_model import UsuarioModel
 
 logger = logging.getLogger(__name__)
 
-# [OWASP A09: Identificación precisa de la IP real considerando proxies inversos]
+# [OWASP A09: Identificación precisa de la IP de origen]
 def obtener_ip_origen():
     ip = request.headers.get('X-Forwarded-For', request.remote_addr) or '127.0.0.1'
     return ip.split(',')[0].strip() if ',' in ip else ip
@@ -15,7 +15,6 @@ def obtener_ip_origen():
 
 # --- DECORADORES DE SEGURIDAD (OWASP A01) ---
 
-# [OWASP A01: Control de acceso para requerir autenticación previa]
 def login_requerido(f):
     @wraps(f)
     def decorada(*args, **kwargs):
@@ -25,7 +24,7 @@ def login_requerido(f):
         return f(*args, **kwargs)
     return decorada
 
-# [OWASP A01 & A09: Control RBAC exclusivo para administradores y registro de accesos no autorizados]
+
 def admin_requerido(f):
     @wraps(f)
     def decorada(*args, **kwargs):
@@ -34,8 +33,8 @@ def admin_requerido(f):
             correo = session.get('usuario_nombre', 'Desconocido')
             try:
                 UsuarioModel.registrar_auditoria(correo, ip_origen, 'ACCESO_DENEGADO', f'Intento de acceso no autorizado a {request.path}')
-            except Exception as e:
-                logger.error(f"Error al registrar auditoría de acceso denegado: {e}")
+            except Exception:
+                logger.error("Error al registrar auditoría de acceso denegado.")
             flash("Acceso denegado: permisos insuficientes.", "error")
             return redirect(url_for('index_view'))
         return f(*args, **kwargs)
@@ -51,60 +50,53 @@ def login_view():
         correo = request.form.get('correo', '').strip().lower()
         password = request.form.get('password', '')
         
-        # [OWASP A04: Mensaje genérico contra enumeración de usuarios válidos]
         mensaje_error_generico = "Credenciales incorrectas o cuenta temporalmente suspendida."
 
-        if not correo or not password:
+        if not correo or not password or len(correo) > 120 or len(password) > 128:
             flash(mensaje_error_generico, "error")
             return render_template('login.html')
 
         try:
             usuario = UsuarioModel.get_by_email(correo)
-        except Exception as e:
-            logger.error(f"Error en consulta de autenticación: {e}")
+        except Exception:
+            logger.error("Fallo de consulta en el proceso de autenticación.")
             usuario = None
 
-        # [OWASP A09: Registro de fallos de inicio de sesión de cuentas inexistentes]
         if not usuario:
             try:
                 UsuarioModel.registrar_auditoria(correo, ip_origen, 'FALLO_LOGIN', 'Usuario no registrado')
-            except Exception as e:
-                logger.error(f"Error al registrar auditoría: {e}")
+            except Exception:
+                logger.error("Error registrando auditoría para usuario no registrado.")
             flash(mensaje_error_generico, "error")
             return render_template('login.html')
 
-        # [OWASP A04 & A07: Control de bloqueo temporal por fuerza bruta]
         bloqueado_hasta = usuario.get('bloqueado_hasta')
         if bloqueado_hasta:
             ahora = datetime.now(timezone.utc).replace(tzinfo=None)
             if bloqueado_hasta > ahora:
                 try:
                     UsuarioModel.registrar_auditoria(correo, ip_origen, 'ACCESO_DENEGADO', 'Intento sobre cuenta bloqueada')
-                except Exception as e:
-                    logger.error(f"Error al registrar auditoría: {e}")
+                except Exception:
+                    logger.error("Error registrando auditoría en cuenta bloqueada.")
                 flash(mensaje_error_generico, "error")
                 return render_template('login.html')
 
-        # [OWASP A02: Comparación segura de hash con Bcrypt]
         pwd_hash = usuario.get('password_hash') or ''
         es_valida = UsuarioModel.verify_password(password, pwd_hash)
 
         if es_valida:
             try:
                 UsuarioModel.reiniciar_intentos(usuario['id'])
-                # [OWASP A09: Auditoría de acceso exitoso]
                 UsuarioModel.registrar_auditoria(correo, ip_origen, 'LOGIN_EXITOSO', 'Autenticación exitosa')
-            except Exception as e:
-                logger.error(f"Error actualizando estado de login: {e}")
+            except Exception:
+                logger.error("Error al reiniciar intentos tras login exitoso.")
 
-            # [OWASP A07: Renovación completa de sesión para prevenir Session Fixation]
             session.clear()
             session['usuario_id'] = usuario['id']
             session['usuario_nombre'] = usuario.get('nombre', 'Usuario')
             session['usuario_rol'] = usuario.get('rol', 'usuario')
             return redirect(url_for('index_view'))
 
-        # [OWASP A04 & A09: Registro de contraseña errónea e incremento atómico de intentos]
         try:
             UsuarioModel.incrementar_intentos(usuario['id'])
             intentos_actuales = (usuario.get('intentos_fallidos') or 0) + 1
@@ -113,8 +105,8 @@ def login_view():
                 UsuarioModel.registrar_auditoria(correo, ip_origen, 'CUENTA_BLOQUEADA', 'Bloqueo temporal aplicado')
             else:
                 UsuarioModel.registrar_auditoria(correo, ip_origen, 'FALLO_LOGIN', f'Intento fallido #{intentos_actuales}')
-        except Exception as e:
-            logger.error(f"Error registrando intento fallido: {e}")
+        except Exception:
+            logger.error("Error registrando intento fallido en base de datos.")
 
         flash(mensaje_error_generico, "error")
         return render_template('login.html')
@@ -122,14 +114,13 @@ def login_view():
     return render_template('login.html')
 
 
-# [OWASP A07 & A09: Cierre seguro, destrucción de sesión y trazabilidad de salida]
 def logout_view():
     correo = session.get('usuario_nombre', 'Sesión')
     ip_origen = obtener_ip_origen()
     try:
         UsuarioModel.registrar_auditoria(correo, ip_origen, 'LOGOUT', 'Cierre de sesión seguro')
-    except Exception as e:
-        logger.error(f"Error registrando logout: {e}")
+    except Exception:
+        logger.error("Error registrando auditoría de cierre de sesión.")
         
     session.clear()
     flash("Sesión finalizada de forma segura.", "success")
@@ -155,24 +146,22 @@ def agregar_view():
         ip_origen = obtener_ip_origen()
         admin_actual = session.get('usuario_nombre', 'Admin')
 
-        # [OWASP A03: Validación estricta mediante expresiones regulares de la entrada]
-        patron_correo = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
-        if not nombre or not correo or not re.match(patron_correo, correo):
+        # Expresión regular robusta sin vulnerabilidad ReDoS
+        patron_correo = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9]{2,}$'
+        if not nombre or not correo or not re.match(patron_correo, correo) or len(nombre) > 60:
             flash("Datos de entrada inválidos o formato de correo incorrecto.", "error")
             return redirect(url_for('index_view'))
 
-        # [OWASP A01: Validación en lista blanca del rol asignado]
         if rol not in ['admin', 'usuario']:
             flash("Rol no autorizado.", "error")
             return redirect(url_for('index_view'))
 
         try:
             UsuarioModel.create(nombre, correo, password_default, rol)
-            # [OWASP A09: Auditoría de creación de cuentas]
             UsuarioModel.registrar_auditoria(admin_actual, ip_origen, 'CREAR_USUARIO', f'Creó al usuario: {correo} (Rol: {rol})')
             flash("Usuario registrado exitosamente con clave por defecto.", "success")
-        except Exception as e:
-            logger.error(f"Error al crear usuario: {e}")
+        except Exception:
+            logger.error("Error al ejecutar creación de usuario en modelo.")
             flash("Error: El correo electrónico ya se encuentra registrado o hubo un fallo en base de datos.", "error")
 
     return redirect(url_for('index_view'))
@@ -188,24 +177,21 @@ def editar_view(id_usuario):
         ip_origen = obtener_ip_origen()
         admin_actual = session.get('usuario_nombre', 'Admin')
 
-        # [OWASP A03: Validación estricta de formato]
-        patron_correo = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$'
-        if not nombre or not correo or not re.match(patron_correo, correo):
+        patron_correo = r'^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9]{2,}$'
+        if not nombre or not correo or not re.match(patron_correo, correo) or len(nombre) > 60:
             flash("Datos de formulario inválidos.", "error")
             return redirect(url_for('index_view'))
 
-        # [OWASP A01: Whitelist de perfiles]
         if rol not in ['admin', 'usuario']:
             flash("Rol no permitido.", "error")
             return redirect(url_for('index_view'))
 
         try:
             UsuarioModel.update(id_usuario, nombre, correo, rol)
-            # [OWASP A09: Auditoría de cambios sobre registros]
             UsuarioModel.registrar_auditoria(admin_actual, ip_origen, 'ACTUALIZAR_USUARIO', f'Actualizó ID #{id_usuario}: {correo} (Rol: {rol})')
             flash("Registro actualizado correctamente.", "success")
-        except Exception as e:
-            logger.error(f"Error al actualizar: {e}")
+        except Exception:
+            logger.error("Error al actualizar datos de usuario en modelo.")
             flash("Error al procesar la actualización del usuario.", "error")
 
     return redirect(url_for('index_view'))
@@ -215,7 +201,6 @@ def editar_view(id_usuario):
 @admin_requerido
 def eliminar_view(id_usuario):
     if request.method == 'POST':
-        # [OWASP A01: Control de acceso para evitar que un admin borre su propia sesión activa]
         if id_usuario == session.get('usuario_id'):
             flash("Operación denegada: No puedes eliminar tu propia cuenta activa.", "error")
             return redirect(url_for('index_view'))
@@ -225,11 +210,10 @@ def eliminar_view(id_usuario):
 
         try:
             UsuarioModel.delete(id_usuario)
-            # [OWASP A09: Auditoría de eliminación de usuarios]
             UsuarioModel.registrar_auditoria(admin_actual, ip_origen, 'ELIMINAR_USUARIO', f'Eliminó al usuario con ID #{id_usuario}')
             flash("Usuario eliminado de la base de datos.", "success")
-        except Exception as e:
-            logger.error(f"Error al eliminar: {e}")
+        except Exception:
+            logger.error("Error al eliminar usuario en modelo.")
             flash("Error al procesar la eliminación.", "error")
 
     return redirect(url_for('index_view'))

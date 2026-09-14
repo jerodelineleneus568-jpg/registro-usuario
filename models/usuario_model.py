@@ -4,25 +4,29 @@ from config import get_db_connection
 
 class UsuarioModel:
 
-    # OWASP A07: Validación de fortaleza minima de contraseña
+    # OWASP A07: Validación de fortaleza mínima de contraseña
     @staticmethod
     def validar_password_fuerte(password: str) -> bool:
-        """Exige mínimo 8 caracteres, al menos una mayúscula, un número y un caracter especial."""
-        if len(password) < 8:
+        """Exige entre 8 y 128 caracteres, al menos una minúscula, una mayúscula, un número y un símbolo."""
+        if not password or len(password) < 8 or len(password) > 128:
             return False
-        patron = r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&#/._-]).{8,}$'
-        return bool(re.match(patron, password))
+        
+        tiene_minuscula = bool(re.search(r'[a-z]', password))
+        tiene_mayuscula = bool(re.search(r'[A-Z]', password))
+        tiene_numero = bool(re.search(r'\d', password))
+        tiene_simbolo = bool(re.search(r'[@$!%*?&#/._-]', password))
+        
+        return tiene_minuscula and tiene_mayuscula and tiene_numero and tiene_simbolo
 
-        # OWASP A02: Hashing con sal aleatoria y coste computacional elevado
-
+    # OWASP A02: Hashing con sal aleatoria y coste computacional elevado
     @staticmethod
-    def hash_password(password_plana):
+    def hash_password(password_plana: str) -> str:
         salt = bcrypt.gensalt(rounds=12)
         return bcrypt.hashpw(password_plana.encode('utf-8'), salt).decode('utf-8')
 
-        # OWASP A02: Verificacion segura de hashes sin riesgo de fuga en tiempo de ejecucion
+    # OWASP A02: Verificación segura de hashes en tiempo constante
     @staticmethod
-    def verify_password(password_plana, password_hash):
+    def verify_password(password_plana, password_hash) -> bool:
         if not password_plana or not password_hash:
             return False
         if isinstance(password_hash, str):
@@ -34,42 +38,50 @@ class UsuarioModel:
         except (ValueError, TypeError):
             return False
 
-         # OWASP A03: Consultas preparadas usando tuplas %s contra inyección SQL
-
+    # OWASP A03: Consultas preparadas usando tuplas %s contra inyección SQL
     @staticmethod
     def get_all():
         conn = get_db_connection()
         try:
             with conn.cursor() as cursor:
-                cursor.execute("SELECT id, nombre, correo, rol, intentos_fallidos, bloqueado_hasta FROM usuarios ORDER BY id DESC")
+                cursor.execute(
+                    "SELECT id, nombre, correo, rol, intentos_fallidos, bloqueado_hasta "
+                    "FROM usuarios ORDER BY id DESC"
+                )
                 return cursor.fetchall()
         finally:
             conn.close()
 
-            # Parametrización estricta por ID
     @staticmethod
     def get_by_id(id_usuario):
         conn = get_db_connection()
         try:
             with conn.cursor() as cursor:
-                cursor.execute("SELECT id, nombre, correo, rol FROM usuarios WHERE id = %s", (id_usuario,))
+                cursor.execute(
+                    "SELECT id, nombre, correo, rol FROM usuarios WHERE id = %s", 
+                    (int(id_usuario),)
+                )
                 return cursor.fetchone()
         finally:
             conn.close()
-
-            # Parametrizacion estricta por Correo
 
     @staticmethod
     def get_by_email(correo):
+        if not correo:
+            return None
         conn = get_db_connection()
         try:
             with conn.cursor() as cursor:
-                cursor.execute("SELECT id, nombre, correo, password_hash, rol, intentos_fallidos, bloqueado_hasta FROM usuarios WHERE correo = %s", (correo,))
+                cursor.execute(
+                    "SELECT id, nombre, correo, password_hash, rol, intentos_fallidos, bloqueado_hasta "
+                    "FROM usuarios WHERE correo = %s", 
+                    (correo.strip().lower(),)
+                )
                 return cursor.fetchone()
         finally:
             conn.close()
 
-            # OWASP A02 & A03: Almacenamiento seguro de clave cifrada con consulta parametrizada
+    # OWASP A02, A03 & A04: Almacenamiento seguro con rollback transaccional
     @staticmethod
     def create(nombre, correo, password_plana, rol='usuario'):
         hashed_password = UsuarioModel.hash_password(password_plana)
@@ -78,13 +90,15 @@ class UsuarioModel:
             with conn.cursor() as cursor:
                 cursor.execute(
                     "INSERT INTO usuarios (nombre, correo, password_hash, rol) VALUES (%s, %s, %s, %s)",
-                    (nombre, correo, hashed_password, rol)
+                    (nombre.strip(), correo.strip().lower(), hashed_password, rol)
                 )
             conn.commit()
+            return True
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             conn.close()
-
-            # OWASP A03: Actualizacion parametrizada de datos de usuario
 
     @staticmethod
     def update(id_usuario, nombre, correo, rol):
@@ -93,28 +107,33 @@ class UsuarioModel:
             with conn.cursor() as cursor:
                 cursor.execute(
                     "UPDATE usuarios SET nombre = %s, correo = %s, rol = %s WHERE id = %s",
-                    (nombre, correo, rol, id_usuario)
+                    (nombre.strip(), correo.strip().lower(), rol, int(id_usuario))
                 )
             conn.commit()
+            return True
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             conn.close()
-
-            #  Eliminacion parametrizada
 
     @staticmethod
     def delete(id_usuario):
         conn = get_db_connection()
         try:
             with conn.cursor() as cursor:
-                cursor.execute("DELETE FROM usuarios WHERE id = %s", (id_usuario,))
+                cursor.execute("DELETE FROM usuarios WHERE id = %s", (int(id_usuario),))
             conn.commit()
+            return True
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             conn.close()
 
-            # OWASP A04 & A07: O peracion atomica contra race conditions y bloque temporal por fuerza bruta
+    # OWASP A04 & A07: Operación atómica contra condiciones de carrera y bloqueo temporal
     @staticmethod
     def incrementar_intentos(id_usuario):
-        """Operación atómica en BD: evita condiciones de carrera (OWASP A04)."""
         conn = get_db_connection()
         try:
             with conn.cursor() as cursor:
@@ -126,12 +145,14 @@ class UsuarioModel:
                             ELSE bloqueado_hasta 
                         END
                     WHERE id = %s
-                """, (id_usuario,))
+                """, (int(id_usuario),))
             conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             conn.close()
 
-            # OWASP A07: Reinicio del contador de intentos tras login exitoso
     @staticmethod
     def reiniciar_intentos(id_usuario):
         conn = get_db_connection()
@@ -141,13 +162,15 @@ class UsuarioModel:
                     UPDATE usuarios 
                     SET intentos_fallidos = 0, bloqueado_hasta = NULL 
                     WHERE id = %s
-                """, (id_usuario,))
+                """, (int(id_usuario),))
             conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             conn.close()
 
-            # OWASP A09: Registro persistente en tabla de auditoría con marca temporal
-
+    # OWASP A09: Trazabilidad persistente de eventos
     @staticmethod
     def registrar_auditoria(correo, ip, evento, descripcion):
         conn = get_db_connection()
@@ -158,17 +181,22 @@ class UsuarioModel:
                     VALUES (%s, %s, %s, %s, UTC_TIMESTAMP())
                 """, (correo, ip, evento, descripcion))
             conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             conn.close()
-
-            # OWASP A09: Consulta de bitácoras de auditoría
 
     @staticmethod
     def get_auditoria(limite=100):
         conn = get_db_connection()
         try:
             with conn.cursor() as cursor:
-                cursor.execute("SELECT id, correo, ip_origen, evento, descripcion, fecha FROM auditoria_accesos ORDER BY fecha DESC LIMIT %s", (limite,))
+                cursor.execute(
+                    "SELECT id, correo, ip_origen, evento, descripcion, fecha "
+                    "FROM auditoria_accesos ORDER BY fecha DESC LIMIT %s", 
+                    (int(limite),)
+                )
                 return cursor.fetchall()
         finally:
             conn.close()
